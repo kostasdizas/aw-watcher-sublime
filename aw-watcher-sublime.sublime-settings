@@ -1,0 +1,7 @@
+{
+	"hostname": "localhost",
+	"port": 5600,
+	"heartbeat_frequency": 10,
+	"bucket_name": "aw-watcher-sublime",
+	"debug": false,
+}
