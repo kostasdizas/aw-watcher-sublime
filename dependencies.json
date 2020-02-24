@@ -1,9 +1,7 @@
 {
     "*": {
         "*": [
-            "requests",
-            "aw-core",
-            "aw-client"
+            "requests"
         ]
     }
 }
