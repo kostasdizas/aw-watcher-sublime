@@ -39,6 +39,9 @@ class ActivityWatchListener(sublime_plugin.EventListener):
         self.bucket_name = settings.get("bucket_name", "aw-watcher-sublime")
         self.debug = settings.get("debug", False)
 
+    def _get_file_name(self, view):
+        return view.file_name() or view.name() or "untitled"
+
     def _get_project_name(self, view):
         window = view.window()
         project = "unknown"
@@ -50,11 +53,16 @@ class ActivityWatchListener(sublime_plugin.EventListener):
             project = project.get("name")
         return project
 
+    def _get_language(self, view):
+        point = view.sel()[0].begin()
+        scopes = view.scope_name(point).strip().split(" ")
+        return scopes[0]
+
     def _handle(self, view):
         event_data = {
-            "file": view.file_name(),
+            "file": self._get_file_name(view),
             "project": self._get_project_name(view),
-            "language": view.scope_name(view.sel()[-1].b).split(" ")[0]
+            "language": self._get_language(view)
         }
         self.api.heartbeat(self.bucket_name, event_data)
 
