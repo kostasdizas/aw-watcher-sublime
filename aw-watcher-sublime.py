@@ -51,6 +51,11 @@ class ActivityWatchListener(sublime_plugin.EventListener):
             project = "unknown"
         if "name" in project:
             project = project.get("name")
+        elif "folders" in project:
+            for folder in project.get("folders"):
+                if self._get_file_name(view).startswith(folder.get("path")):
+                    project = folder.get("path")
+                    break
         return project
 
     def _get_language(self, view):
