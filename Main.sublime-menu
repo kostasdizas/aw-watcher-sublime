@@ -12,14 +12,14 @@
         "children":
         [
           {
-            "caption": "Activity​Watch Watcher",
+            "caption": "ActivityWatch Watcher",
             "children":
             [
               {
                   "command": "edit_settings",
                   "args":
                   {
-                      "base_file": "${packages}/Activity​Watch Watcher/Activity​Watch Watcher.sublime-settings"
+                      "base_file": "${packages}/ActivityWatch Watcher/ActivityWatch Watcher.sublime-settings"
                   },
                   "caption": "Settings"
               },
