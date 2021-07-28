@@ -10,11 +10,19 @@ class ActivityWatchApi(object):
     _last_heartbeat = datetime.now()
     freq = 10
 
-    def __init__(self, client_name, host, port, freq):
+    def __init__(self):
+        utils.log("ActivityWatchApi initializing")
+        self.debug = False
+
+    def setup(self, client_name, host, port, freq):
         self.url = "http://{}:{}".format(host, port)
         self.client_name = client_name
         self.hostname = socket.gethostname()
         self.freq = freq
+
+    def enable_debugging(self):
+        self.debug = True
+        utils.log("API debugging enabled")
 
     def _make_url(self, endpoint):
         return "{}/api/0/{}".format(self.url, endpoint)
