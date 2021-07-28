@@ -1,13 +1,13 @@
 import json
 import socket
 import requests
-from datetime import datetime
+from datetime import datetime, timezone
 
 from . import utils
 
 
 class ActivityWatchApi(object):
-    _last_heartbeat = datetime.now()
+    _last_heartbeat = datetime.now(timezone.utc)
     freq = 10
 
     def __init__(self):
@@ -81,7 +81,7 @@ class ActivityWatchApi(object):
             self.create_bucket(bucket_id)
 
     def heartbeat(self, bucket_id, event_data, pulsetime=30):
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
 
         if not self._rate_limited(now):
             return
