@@ -7,18 +7,17 @@ from . import utils
 
 
 class ActivityWatchApi(object):
-    _last_heartbeat = datetime.now(timezone.utc)
-    freq = 10
 
     def __init__(self):
         utils.log("ActivityWatchApi initializing")
         self.debug = False
+        self._last_heartbeat = datetime.min.replace(tzinfo=timezone.utc)
 
-    def setup(self, client_name, host, port, freq):
+    def setup(self, client_name, host, port, min_seconds):
         self.url = "http://{}:{}".format(host, port)
         self.client_name = client_name
         self.hostname = socket.gethostname()
-        self.freq = freq
+        self.min_seconds = min_seconds
 
     def enable_debugging(self):
         self.debug = True
@@ -33,7 +32,7 @@ class ActivityWatchApi(object):
         return "{}/api/0/{}".format(self.url, endpoint)
 
     def _rate_limited(self, now):
-        return (now - self._last_heartbeat).total_seconds() > self.freq
+        return (now - self._last_heartbeat).total_seconds() > self.min_seconds
 
     def check(self):
         if self.debug:
@@ -41,12 +40,10 @@ class ActivityWatchApi(object):
         headers = {"Content-type": "application/json"}
         try:
             requests.get(self._make_url(""), headers=headers)
-            self.connected = True
+            return True
         except requests.RequestException:
-            self.connected = False
             utils.log("could not connect")
-
-        return self.connected
+            return False
 
     def get_bucket(self, bucket_id):
         if self.debug:
