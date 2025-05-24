@@ -1,7 +1,10 @@
 {
     "*": {
         "*": [
-            "requests"
+            "requests",
+            "charset-normalizer",
+            "idna",
+            "urllib3"
         ]
     }
 }
