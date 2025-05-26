@@ -53,6 +53,9 @@ def sync_settings() -> None:
     heartbeat_frequency = SETTINGS.get("heartbeat_frequency")
     api.setup(CLIENT_ID, hostname, port, heartbeat_frequency)
 
+    bucket_name = SETTINGS.get("bucket_name")
+    api.ensure_bucket(bucket_name)
+
 
 def toggle_debugging(enable: bool) -> None:
     if enable:
@@ -105,9 +108,7 @@ def correct_slashes(path):
 def handle_activity(view):
     if DEBUG:
         utils.log("handle_activity() fired")
-    if CONNECTED:
-        api.ensure_bucket(SETTINGS.get("bucket_name"))
-    else:
+    if not CONNECTED:
         active_window = sublime.active_window()
         if active_window:
             for view in active_window.views():
@@ -125,7 +126,8 @@ def handle_activity(view):
             event_data["file"],
             event_data["project"],
             event_data["language"]))
-    api.heartbeat(SETTINGS.get("bucket_name"), event_data)
+    bucket_name = SETTINGS.get("bucket_name")
+    api.heartbeat(bucket_name, event_data)
 
 
 class ActivityWatchListener(sublime_plugin.EventListener):
