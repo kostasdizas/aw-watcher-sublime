@@ -1,6 +1,7 @@
 import sublime
 import sublime_plugin
 
+import webbrowser
 from .activitywatch.api import ActivityWatchApi
 from .activitywatch import utils
 
@@ -122,3 +123,11 @@ class ActivityWatchListener(sublime_plugin.EventListener):
             utils.log("on_modified_async fired")
         if CONNECTED:
             handle_activity(view)
+
+
+class AwWatcherSublimeOpenDashboardCommand(sublime_plugin.WindowCommand):
+    def run(self):
+        hostname = SETTINGS.get("hostname")
+        port = SETTINGS.get("port")        
+        webbrowser.open("http://{}:{}".format(hostname, port))
+

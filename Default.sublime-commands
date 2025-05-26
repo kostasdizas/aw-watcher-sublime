@@ -1,0 +1,6 @@
+[
+    {
+        "caption": "ActivityWatch: Open Dashboard",
+        "command": "aw_watcher_sublime_open_dashboard"
+    }
+]
