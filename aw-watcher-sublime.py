@@ -24,23 +24,41 @@ def plugin_loaded():
 
 
 def after_loaded():
-    global CONNECTED, DEBUG
     if DEBUG:
         utils.log("after_loaded() called")
-    global api
-    api.setup(
-        CLIENT_ID, SETTINGS.get("hostname"),
-        SETTINGS.get("port"), SETTINGS.get("heartbeat_frequency"))
-    CONNECTED = api.check()
-    DEBUG = SETTINGS.get("debug")
-    if DEBUG:
-        api.enable_debugging()
+    sync_settings()
+    update_connection_status()
+    SETTINGS.clear_on_change("ActivityWatch Watcher.settings")
+    SETTINGS.add_on_change("ActivityWatch Watcher.settings", sync_settings)
 
-        utils.log("hostname: {}\n\tport: {}\n\theartbeat_freq: {}\n\tbucket_name: {}\n\tdebug: {}".format(
-            SETTINGS.get("hostname"), SETTINGS.get("port"),
-            SETTINGS.get("heartbeat_frequency"), SETTINGS.get("bucket_name"),
-            SETTINGS.get("debug")))
+
+def update_connection_status() -> None:
+    global CONNECTED
+    CONNECTED = api.check()
+
+    if DEBUG:
         utils.log("Connected? {}".format(CONNECTED))
+
+
+def sync_settings() -> None:
+    updated_debug = SETTINGS.get("debug")
+
+    if DEBUG != updated_debug:
+        global DEBUG
+        toggle_debugging(updated_debug)
+        DEBUG = updated_debug
+
+    hostname = SETTINGS.get("hostname")
+    port = SETTINGS.get("port")
+    heartbeat_frequency = SETTINGS.get("heartbeat_frequency")
+    api.setup(CLIENT_ID, hostname, port, heartbeat_frequency)
+
+
+def toggle_debugging(enable: bool) -> None:
+    if enable:
+        api.enable_debugging()
+    else:
+        api.disable_debugging()
 
 
 def get_file_name(view):

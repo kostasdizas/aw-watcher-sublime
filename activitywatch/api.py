@@ -24,6 +24,11 @@ class ActivityWatchApi(object):
         self.debug = True
         utils.log("API debugging enabled")
 
+    def disable_debugging(self):
+        if self.debug:
+            utils.log("API debugging disabled")
+        self.debug = False
+
     def _make_url(self, endpoint):
         return "{}/api/0/{}".format(self.url, endpoint)
 
