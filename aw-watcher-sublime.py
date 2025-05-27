@@ -43,8 +43,8 @@ def update_connection_status() -> None:
 def sync_settings() -> None:
     updated_debug = SETTINGS.get("debug")
 
+    global DEBUG
     if DEBUG != updated_debug:
-        global DEBUG
         toggle_debugging(updated_debug)
         DEBUG = updated_debug
 
