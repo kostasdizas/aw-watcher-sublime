@@ -4,41 +4,42 @@ from .api import ActivityWatchApi
 
 
 class ApiTest(unittest.TestCase):
-    def setUp(self):
-        self.api = ActivityWatchApi("test_client", "localhost", 5600, 5)
+    def setUp(self) -> None:
+        self.api = ActivityWatchApi()
+        self.api.setup("test_client", "localhost", 5600, 5)
 
-    def test_check_is_alive(self):
+    def test_check_is_alive(self) -> None:
         self.assertTrue(self.api.check())
 
-    def test_check_has_bucket(self):
+    def test_check_has_bucket(self) -> None:
         bucket_name = "test_bucket"
         bucket = self.api.get_bucket(bucket_name)
-        self.assertFalse('id' in bucket)
+        self.assertFalse("id" in bucket)
 
-    def test_create_bucket(self):
+    def test_create_bucket(self) -> None:
         bucket_name = "test_bucket"
 
         self.api.create_bucket(bucket_name)
 
         bucket = self.api.get_bucket(bucket_name)
-        self.assertTrue('id' in bucket)
-        self.assertEqual(bucket.get('id'), bucket_name)
+        self.assertTrue("id" in bucket)
+        self.assertEqual(bucket.get("id"), bucket_name)
 
         self.api.delete_bucket(bucket_name)
 
-    def test_ensure_bucket(self):
+    def test_ensure_bucket(self) -> None:
         bucket_name = "test_bucket"
 
         bucket = self.api.get_bucket(bucket_name)
-        self.assertFalse('id' in bucket)
+        self.assertFalse("id" in bucket)
 
         self.api.ensure_bucket(bucket_name)
 
         bucket = self.api.get_bucket(bucket_name)
-        self.assertTrue('id' in bucket)
-        self.assertEqual(bucket.get('id'), bucket_name)
+        self.assertTrue("id" in bucket)
+        self.assertEqual(bucket.get("id"), bucket_name)
 
         self.api.delete_bucket(bucket_name)
 
-    def test_heartbeat(self):
+    def test_heartbeat(self) -> None:
         pass

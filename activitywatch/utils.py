@@ -1,7 +1,11 @@
-import sublime
+try:
+    import sublime
+except ImportError:  # outside Sublime Text, e.g. under pytest
+    sublime = None  # type: ignore[assignment]
 
 
-def log(msg):
-    msg = '[aw-watcher-sublime] {}'.format(msg)
+def log(msg: str) -> None:
+    msg = "[aw-watcher-sublime] {}".format(msg)
     print(msg)
-    sublime.status_message(msg)
+    if sublime is not None:
+        sublime.status_message(msg)

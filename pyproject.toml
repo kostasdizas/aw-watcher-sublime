@@ -1,0 +1,14 @@
+[dependency-groups]
+dev = ["black", "mypy", "pytest", "requests", "sublime-text-stubs", "types-requests"]
+
+[tool.black]
+target-version = ["py38"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unreachable = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+python_files = ["*_test.py"]
