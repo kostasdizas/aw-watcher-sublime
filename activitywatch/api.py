@@ -46,7 +46,7 @@ class ActivityWatchApi(object):
     def _make_url(self, endpoint: str) -> str:
         return "{}/api/0/{}".format(self.url, endpoint)
 
-    def _rate_limited(self, now: datetime) -> bool:
+    def _heartbeat_due(self, now: datetime) -> bool:
         return (now - self._last_heartbeat).total_seconds() > self.min_seconds
 
     def check(self) -> bool:
@@ -110,7 +110,7 @@ class ActivityWatchApi(object):
     ) -> bool:
         now = datetime.now(timezone.utc)
 
-        if not self._rate_limited(now):
+        if not self._heartbeat_due(now):
             return True
 
         if self.debug:
