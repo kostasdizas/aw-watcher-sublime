@@ -1,4 +1,3 @@
-import json
 import socket
 import requests
 from datetime import datetime, timezone
@@ -6,12 +5,27 @@ from datetime import datetime, timezone
 from . import utils
 
 
+class TimeoutSession(requests.Session):
+    """A session that always sends a timeout."""
+
+    def __init__(self, timeout):
+        super().__init__()
+        self._timeout = timeout
+
+    def request(self, *args, **kwargs):
+        kwargs.setdefault("timeout", self._timeout)
+        return super().request(*args, **kwargs)
+
+
 class ActivityWatchApi(object):
+
+    _api_timeout = 5
 
     def __init__(self):
         utils.log("ActivityWatchApi initializing")
         self.debug = False
         self._last_heartbeat = datetime.min.replace(tzinfo=timezone.utc)
+        self._session = TimeoutSession(self._api_timeout)
 
     def setup(self, client_name, host, port, min_seconds):
         self.url = "http://{}:{}".format(host, port)
@@ -37,9 +51,8 @@ class ActivityWatchApi(object):
     def check(self):
         if self.debug:
             utils.log("Checking server connection")
-        headers = {"Content-type": "application/json"}
         try:
-            requests.get(self._make_url(""), headers=headers)
+            self._session.get(self._make_url(""))
             return True
         except requests.RequestException:
             utils.log("could not connect")
@@ -48,37 +61,34 @@ class ActivityWatchApi(object):
     def get_bucket(self, bucket_id):
         if self.debug:
             utils.log("Retrieving bucket")
-        endpoint = 'buckets/{}'.format(bucket_id)
-        headers = {'content-type': 'application/json'}
-        resp = requests.get(self._make_url(endpoint), headers=headers)
-        return json.loads(resp.text)
+        endpoint = "buckets/{}".format(bucket_id)
+        resp = self._session.get(self._make_url(endpoint))
+        return resp.json()
 
     def create_bucket(self, bucket_id):
         if self.debug:
             utils.log("Creating bucket")
-        endpoint = 'buckets/{}'.format(bucket_id)
+        endpoint = "buckets/{}".format(bucket_id)
         data = {
-            'client': self.client_name,
-            'type': 'app.editor.activity',
-            'hostname': self.hostname
+            "client": self.client_name,
+            "type": "app.editor.activity",
+            "hostname": self.hostname,
         }
-        headers = {'content-type': 'application/json'}
-        resp = requests.post(self._make_url(endpoint),
-                             data=json.dumps(data), headers=headers)
-        return json.loads(resp.text)
+        resp = self._session.post(self._make_url(endpoint), json=data)
+        return resp.json()
 
     def delete_bucket(self, bucket_id):
         if self.debug:
             utils.log("Deleting bucket")
-        endpoint = 'buckets/{}?force=1'.format(bucket_id)
-        resp = requests.delete(self._make_url(endpoint))
-        return json.loads(resp.text)
+        endpoint = "buckets/{}?force=1".format(bucket_id)
+        resp = self._session.delete(self._make_url(endpoint))
+        return resp.json()
 
     def ensure_bucket(self, bucket_id):
         if self.debug:
             utils.log("Ensuring bucket exists")
         bucket = self.get_bucket(bucket_id)
-        bucket_exists = 'id' in bucket
+        bucket_exists = "id" in bucket
         if not bucket_exists:
             self.create_bucket(bucket_id)
 
@@ -91,15 +101,12 @@ class ActivityWatchApi(object):
         if self.debug:
             utils.log("Heartbeat")
 
-        endpoint = 'buckets/{}/heartbeat?pulsetime={}'.format(bucket_id,
-                                                              pulsetime)
+        endpoint = "buckets/{}/heartbeat?pulsetime={}".format(bucket_id, pulsetime)
         data = {
-            'timestamp': now.isoformat(),
-            'duration': 0,
-            'data': event_data,
+            "timestamp": now.isoformat(),
+            "duration": 0,
+            "data": event_data,
         }
-        headers = {'content-type': 'application/json'}
-        resp = requests.post(self._make_url(endpoint),
-                             data=json.dumps(data), headers=headers)
+        resp = self._session.post(self._make_url(endpoint), json=data)
         self._last_heartbeat = now
         return resp
