@@ -52,11 +52,12 @@ class ActivityWatchApi(object):
         if self.debug:
             utils.log("Checking server connection")
         try:
-            self._session.get(self._make_url(""))
-            return True
-        except requests.RequestException:
-            utils.log("could not connect")
+            resp = self._session.get(self._make_url("info"))
+        except requests.RequestException as err:
+            if self.debug:
+                utils.log("could not connect: {}".format(err))
             return False
+        return resp.status_code == 200
 
     def get_bucket(self, bucket_id):
         if self.debug:
@@ -92,11 +93,22 @@ class ActivityWatchApi(object):
         if not bucket_exists:
             self.create_bucket(bucket_id)
 
-    def heartbeat(self, bucket_id, event_data, pulsetime=30):
+    def connect(self, bucket_id) -> bool:
+        if not self.check():
+            return False
+        try:
+            self.ensure_bucket(bucket_id)
+        except requests.RequestException as err:
+            if self.debug:
+                utils.log("could not set up bucket: {}".format(err))
+            return False
+        return True
+
+    def heartbeat(self, bucket_id, event_data, pulsetime=30) -> bool:
         now = datetime.now(timezone.utc)
 
         if not self._rate_limited(now):
-            return
+            return True
 
         if self.debug:
             utils.log("Heartbeat")
@@ -107,6 +119,12 @@ class ActivityWatchApi(object):
             "duration": 0,
             "data": event_data,
         }
-        resp = self._session.post(self._make_url(endpoint), json=data)
+        try:
+            self._session.post(self._make_url(endpoint), json=data)
+        except requests.RequestException as err:
+            if self.debug:
+                utils.log("heartbeat failed: {}".format(err))
+            return False
+
         self._last_heartbeat = now
-        return resp
+        return True

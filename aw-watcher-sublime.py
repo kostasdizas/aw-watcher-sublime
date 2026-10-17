@@ -1,7 +1,10 @@
 import sublime
 import sublime_plugin
 
+import threading
 import webbrowser
+from datetime import datetime, timezone
+
 from .activitywatch.api import ActivityWatchApi
 from .activitywatch import utils
 
@@ -11,7 +14,12 @@ SETTINGS_FILE = "ActivityWatch Watcher.sublime-settings"
 SETTINGS = {}
 DEBUG = False
 CONNECTED = False
+RECONNECT_FREQUENCY = 30
 api = ActivityWatchApi()
+
+_check_lock = threading.Lock()
+_check_running = False
+_last_check = datetime.min.replace(tzinfo=timezone.utc)
 
 
 def plugin_loaded():
@@ -27,17 +35,8 @@ def after_loaded():
     if DEBUG:
         utils.log("after_loaded() called")
     sync_settings()
-    update_connection_status()
     SETTINGS.clear_on_change("ActivityWatch Watcher.settings")
     SETTINGS.add_on_change("ActivityWatch Watcher.settings", sync_settings)
-
-
-def update_connection_status() -> None:
-    global CONNECTED
-    CONNECTED = api.check()
-
-    if DEBUG:
-        utils.log("Connected? {}".format(CONNECTED))
 
 
 def sync_settings() -> None:
@@ -53,8 +52,67 @@ def sync_settings() -> None:
     heartbeat_frequency = SETTINGS.get("heartbeat_frequency")
     api.setup(CLIENT_ID, hostname, port, heartbeat_frequency)
 
+    global RECONNECT_FREQUENCY
+    RECONNECT_FREQUENCY = SETTINGS.get("reconnect_frequency", 30)
+
+    # initial connection
+    request_connection_check(force=True)
+
+
+def connection_checked(connected: bool) -> None:
+    """Update connection status"""
+    global CONNECTED, _check_running
+
+    with _check_lock:
+        _check_running = False
+
+    was_connected = CONNECTED
+    CONNECTED = connected
+
+    if DEBUG:
+        utils.log("Connected? {}".format(CONNECTED))
+
+    if connected:
+        if not was_connected:
+            utils.log("connected to aw-server")
+        set_status("")
+    else:
+        set_status("[aw-watcher-sublime] Could not connect to aw-server")
+
+
+def request_connection_check(force=False) -> None:
+    """Check the connection on a worker thread."""
+    global _check_running, _last_check
+
+    now = datetime.now(timezone.utc)
+
+    with _check_lock:
+        if _check_running:
+            # already reconnecting
+            return
+        if not force:
+            waited = (now - _last_check).total_seconds()
+            if waited < RECONNECT_FREQUENCY:
+                return
+        _check_running = True
+        _last_check = now
+
     bucket_name = SETTINGS.get("bucket_name")
-    api.ensure_bucket(bucket_name)
+
+    def task():
+        connected = api.connect(bucket_name)
+        sublime.set_timeout(lambda: connection_checked(connected), 0)
+
+    threading.Thread(target=task, daemon=True).start()
+
+
+def set_status(message: str) -> None:
+    """Update current window status"""
+    window = sublime.active_window()
+    if not window:
+        return
+    for open_view in window.views():
+        open_view.set_status(CLIENT_ID, message)
 
 
 def toggle_debugging(enable: bool) -> None:
@@ -106,16 +164,15 @@ def correct_slashes(path):
 
 
 def handle_activity(view):
+    global CONNECTED
+
     if DEBUG:
         utils.log("handle_activity() fired")
+
     if not CONNECTED:
-        active_window = sublime.active_window()
-        if active_window:
-            for view in active_window.views():
-                view.set_status(
-                    CLIENT_ID,
-                    "[aw-watcher-sublime] Could not connect "
-                    "to aw-server")
+        request_connection_check()
+        return
+
     event_data = {
         "file": correct_slashes(get_file_name(view)),
         "project": correct_slashes(get_project_name(view)),
@@ -127,7 +184,11 @@ def handle_activity(view):
             event_data["project"],
             event_data["language"]))
     bucket_name = SETTINGS.get("bucket_name")
-    api.heartbeat(bucket_name, event_data)
+
+    if not api.heartbeat(bucket_name, event_data):
+        # if a heartbreak fails, mark as disconnected and reconnect
+        CONNECTED = False
+        request_connection_check()
 
 
 class ActivityWatchListener(sublime_plugin.EventListener):
@@ -135,14 +196,12 @@ class ActivityWatchListener(sublime_plugin.EventListener):
     def on_selection_modified_async(self, view):
         if DEBUG:
             utils.log("on_selection_modified_async fired")
-        if CONNECTED:
-            handle_activity(view)
+        handle_activity(view)
 
     def on_modified_async(self, view):
         if DEBUG:
             utils.log("on_modified_async fired")
-        if CONNECTED:
-            handle_activity(view)
+        handle_activity(view)
 
 
 class AwWatcherSublimeOpenDashboardCommand(sublime_plugin.WindowCommand):
